@@ -21,9 +21,13 @@
 /*
  * Copyright (c) 2007, 2010, Oracle and/or its affiliates. All rights reserved.
  */
+/*
+ * Copyright (c) 2010, Intel Corporation. All rights reserved.
+ */
 
 #include <sys/cpu_acpi.h>
 #include <sys/cpu_idle.h>
+#include <sys/cpupm_pur.h>
 #include <sys/dtrace.h>
 #include <sys/sdt.h>
 
@@ -42,6 +46,7 @@ typedef enum cpu_acpi_obj {
 	TPC_OBJ,
 	CST_OBJ,
 	CSD_OBJ,
+	PUR_OBJ
 } cpu_acpi_obj_t;
 
 /*
@@ -67,7 +72,8 @@ static cpu_acpi_obj_attr_t cpu_acpi_obj_attrs[] = {
 	{"_TSD"},
 	{"_TPC"},
 	{"_CST"},
-	{"_CSD"}
+	{"_CSD"},
+	{"_PUR"},
 };
 
 /*
@@ -957,6 +963,86 @@ cpu_acpi_free_cstate_data(cpu_acpi_handle_t handle)
 			CPU_ACPI_CSTATES(handle) = NULL;
 		}
 	}
+}
+
+/*
+ * Processor utilization request the number of logical processors to be idled.
+ */
+int
+cpu_acpi_pur(cpu_acpi_handle_t handle)
+{
+	ACPI_STATUS astatus;
+	ACPI_BUFFER abuf;
+	ACPI_OBJECT *obj;
+	ACPI_INTEGER cnt;
+	uint32_t rev, num;
+	int     ret = 1;
+
+	abuf.Length = ACPI_ALLOCATE_BUFFER;
+	abuf.Pointer = NULL;
+
+	/*
+	 * Fetch the _PUR object (if present) for the CPU node.
+	 */
+	astatus = AcpiEvaluateObjectTyped(handle->cs_handle, "_PUR",
+			NULL, &abuf, ACPI_TYPE_PACKAGE);
+	if (ACPI_FAILURE(astatus)) {
+		if (astatus == AE_NOT_FOUND) {
+			DTRACE_PROBE3(cpu_acpi__eval__err, int, handle->cs_id,
+				int, PUR_OBJ, int, astatus);
+			return (ret);
+		}
+		cmn_err(CE_NOTE, "!cpu_acpi: error %d evaluating _PUR package "
+			"for CPU %d.", astatus, handle->cs_id);
+		goto out;
+	}
+
+	/*
+	 * Does the package look coherent?
+	 */
+	obj = (ACPI_OBJECT *)abuf.Pointer;
+	if (obj->Package.Count != 2) {
+		cmn_err(CE_NOTE, "!cpu_acpi: _PUR unsupported package "
+			"count %d for CPU %d.", obj->Package.Count, handle->cs_id);
+		goto out;
+	}
+
+	rev = obj->Package.Elements[0].Integer.Value;
+	num = obj->Package.Elements[1].Integer.Value;
+	if (rev != 1) {
+		cmn_err(CE_NOTE, "!cpu_acpi: _PUR invalid element "
+			"revision id %d for CPU %d.", rev, handle->cs_id);
+		goto out;
+	}
+
+	CPU_ACPI_PUR_NUM(handle) = num;
+
+	ret = 0;
+out:
+	if (abuf.Pointer != NULL)
+		AcpiOsFree(abuf.Pointer);
+	return (ret);
+}
+
+/*
+ * _OST evaluation is to convey _PUR evalutation status to the platform
+ */
+void
+cpu_acpi_ost(cpu_acpi_handle_t handle, uint32_t status,
+uint32_t num_idle_cpus)
+{
+	ACPI_OBJECT obj[3] = {
+		{.Type = ACPI_TYPE_INTEGER},
+		{.Type = ACPI_TYPE_INTEGER},
+		{.Type = ACPI_TYPE_BUFFER},
+	};
+	ACPI_OBJECT_LIST list = {3, obj};
+
+	obj[0].Integer.Value = CPUPM_PUR_NOTIFICATION;
+	obj[1].Integer.Value =  status;
+	obj[2].Buffer.Length = 4;
+	obj[2].Buffer.Pointer = (void *)&num_idle_cpus;
+	AcpiEvaluateObject(handle->cs_handle, "_OST", &list, NULL);
 }
 
 /*

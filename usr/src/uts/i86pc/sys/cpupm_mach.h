@@ -19,11 +19,10 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved.
  */
 /*
- * Copyright (c) 2009,  Intel Corporation.
+ * Copyright (c) 2010,  Intel Corporation.
  * All Rights Reserved.
  */
 
@@ -112,6 +111,7 @@ typedef struct cpupm_mach_state {
 	cpupm_mach_acpi_state_t	ms_pstate;
 	cpupm_mach_acpi_state_t	ms_cstate;
 	cpupm_mach_acpi_state_t	ms_tstate;
+	cpupm_mach_acpi_state_t ms_pur;
 	uint32_t		ms_caps;
 	dev_info_t		*ms_dip;
 	kmutex_t		ms_lock;
@@ -144,15 +144,17 @@ typedef struct cpupm_notification {
 #define	CPUPM_P_STATES		0x01
 #define	CPUPM_T_STATES		0x02
 #define	CPUPM_C_STATES		0x04
-#define	CPUPM_ALL_STATES	(CPUPM_P_STATES \
+#define CPUPM_PUR		0x08
+#define	CPUPM_ALL_CAPS		(CPUPM_P_STATES \
 				| CPUPM_T_STATES \
-				| CPUPM_C_STATES)
+				| CPUPM_C_STATES \
+				| CPUPM_PUR)
 
 /*
  * An error in initializing any of the CPU PM results in disabling
  * CPU power management.
  */
-#define	CPUPM_DISABLE() cpupm_disable(CPUPM_ALL_STATES)
+#define	CPUPM_DISABLE() cpupm_disable(CPUPM_ALL_CAPS)
 
 #define	CPUPM_SPEED_HZ(unused, mhz) ((uint64_t)mhz * 1000000)
 

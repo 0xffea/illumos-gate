@@ -2252,6 +2252,9 @@ cpu_info_kstat_update(kstat_t *ksp, int rw)
 	case P_SPARE:
 		pi_state = PS_SPARE;
 		break;
+	case P_PWRIDLE:
+		pi_state = PS_PWRIDLE;
+		break;
 	case P_OFFLINE:
 		pi_state = PS_OFFLINE;
 		break;
@@ -3056,6 +3059,8 @@ cpu_get_state(cpu_t *cpu)
 		return (P_FAULTED);
 	else if (cpu->cpu_flags & CPU_SPARE)
 		return (P_SPARE);
+	else if (cpu->cpu_flags & CPU_PWRIDLE)
+		return (P_PWRIDLE);
 	else if ((cpu->cpu_flags & (CPU_READY | CPU_OFFLINE)) != CPU_READY)
 		return (P_OFFLINE);
 	else if (cpu->cpu_flags & CPU_ENABLE)
@@ -3091,6 +3096,8 @@ cpu_get_state_str(cpu_t *cpu)
 	case P_OFFLINE:
 		string = PS_OFFLINE;
 		break;
+	case P_PWRIDLE:
+		string = PS_PWRIDLE;
 	default:
 		string = "unknown";
 		break;

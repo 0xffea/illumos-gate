@@ -19,8 +19,7 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved.
  */
 
 #ifndef	_CPU_ACPI_H
@@ -68,7 +67,7 @@ extern "C" {
 #define	CPU_ACPI_TSTATE_STAT(tstate)	tstate->ts_state
 
 /*
- * C-state realted macros
+ * C-state related macros
  */
 #define	CPU_ACPI_CSD(sp)		sp->cs_csd
 #define	CPU_ACPI_CSTATES(sp)		sp->cs_cstates.ss_states
@@ -96,6 +95,12 @@ extern "C" {
 #define	CPU_ACPI_TSS_CNT (sizeof (cpu_acpi_tstate_t) / sizeof (uint32_t))
 #define	CPU_ACPI_CSTATES_SIZE(cnt) (cnt * sizeof (cpu_acpi_cstate_t))
 #define	CPU_ACPI_CST_CNT (sizeof (cpu_acpi_cstate_t) / sizeof (uint32_t))
+
+/*
+ * Processor Aggregator Device related macros
+ */
+#define CPU_ACPI_PUR_NUM(sp)		sp->cs_pur.pur_num
+
 /*
  * CPU Domain Coordination Types
  */
@@ -106,8 +111,7 @@ extern "C" {
 /*
  * Container for ACPI processor state dependency information
  */
-typedef struct cpu_acpi_state_dependency
-{
+typedef struct cpu_acpi_state_dependency {
 	uint8_t sd_entries;
 	uint8_t sd_revision;
 	uint32_t sd_domain;
@@ -123,8 +127,7 @@ typedef cpu_acpi_state_dependency_t cpu_acpi_csd_t;
 /*
  * Container for ACPI processor control register information
  */
-typedef struct cpu_acpi_ctrl_regs
-{
+typedef struct cpu_acpi_ctrl_regs {
 	uint8_t cr_addrspace_id;
 	uint8_t cr_width;
 	uint8_t cr_offset;
@@ -138,8 +141,7 @@ typedef cpu_acpi_ctrl_regs_t cpu_acpi_ptc_t;
 /*
  * Container for ACPI _PSS information
  */
-typedef struct cpu_acpi_pstate
-{
+typedef struct cpu_acpi_pstate {
 	uint32_t ps_freq;
 	uint32_t ps_disp;
 	uint32_t ps_translat;
@@ -151,21 +153,18 @@ typedef struct cpu_acpi_pstate
 /*
  * Container for _TSS information
  */
-typedef struct cpu_acpi_tstate
-{
+typedef struct cpu_acpi_tstate {
 	uint32_t ts_freqper;
 	uint32_t ts_disp;
 	uint32_t ts_translat;
 	uint32_t ts_ctrl;
 	uint32_t ts_state;
-
 } cpu_acpi_tstate_t;
 
 /*
  * Container for _CST information
  */
-typedef struct cpu_acpi_cstate
-{
+typedef struct cpu_acpi_cstate {
 	uint32_t cs_addrspace_id;
 	uint32_t cs_address;
 	uint32_t cs_type;
@@ -173,6 +172,13 @@ typedef struct cpu_acpi_cstate
 	uint32_t cs_power;
 	kstat_t	*cs_ksp;
 } cpu_acpi_cstate_t;
+
+/*
+ * Container for _PUR information
+ */
+typedef struct cpu_acpi_pur {
+	uint32_t pur_num;
+} cpu_acpi_pur_t;
 
 typedef struct cpu_acpi_supported_states {
 	void *ss_states;
@@ -204,6 +210,7 @@ typedef struct cpu_acpi_state {
 	cpu_acpi_tpc_t cs_tpc;
 	cpu_acpi_cstates_t cs_cstates;
 	cpu_acpi_csd_t cs_csd;
+	cpu_acpi_pur_t cs_pur;
 } cpu_acpi_state_t;
 
 typedef cpu_acpi_state_t *cpu_acpi_handle_t;
@@ -216,6 +223,8 @@ extern int cpu_acpi_cache_tstate_data(cpu_acpi_handle_t);
 extern void cpu_acpi_free_tstate_data(cpu_acpi_handle_t);
 extern int cpu_acpi_cache_cstate_data(cpu_acpi_handle_t);
 extern void cpu_acpi_free_cstate_data(cpu_acpi_handle_t);
+extern int cpu_acpi_pur(cpu_acpi_handle_t);
+extern void cpu_acpi_ost(cpu_acpi_handle_t, uint32_t, uint32_t);
 extern void cpu_acpi_install_notify_handler(cpu_acpi_handle_t,
     ACPI_NOTIFY_HANDLER, void *);
 extern void cpu_acpi_remove_notify_handler(cpu_acpi_handle_t,

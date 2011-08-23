@@ -19,11 +19,10 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved.
  */
 /*
- * Copyright (c) 2009, Intel Corporation.
+ * Copyright (c) 2010, Intel Corporation.
  * All rights reserved.
  */
 
@@ -40,6 +39,7 @@
 #include <sys/cpu_idle.h>
 #include <sys/cpu_acpi.h>
 #include <sys/cpupm_throttle.h>
+#include <sys/cpupm_pur.h>
 #include <sys/dtrace.h>
 #include <sys/note.h>
 
@@ -88,7 +88,7 @@ static void cpupm_power_manage_notifications(void *);
 /*
  * Until proven otherwise, all power states are manageable.
  */
-static uint32_t cpupm_enabled = CPUPM_ALL_STATES;
+static uint32_t cpupm_enabled = CPUPM_ALL_CAPS;
 
 cpupm_state_domains_t *cpupm_pstate_domains = NULL;
 cpupm_state_domains_t *cpupm_tstate_domains = NULL;
@@ -258,6 +258,14 @@ cpupm_init(cpu_t *cp)
 	}
 
 
+	if (mach_state->ms_pur.cma_ops != NULL) {
+		ret = mach_state->ms_pur.cma_ops->cpus_init(cp);
+		if (ret != 0)
+			mach_state->ms_pur.cma_ops = NULL;
+		else
+			mach_state->ms_caps |= CPUPM_PUR;
+	}
+
 	if (mach_state->ms_caps == CPUPM_NO_STATES) {
 		cpupm_fini(cp);
 		CPUPM_DISABLE();
@@ -267,7 +275,8 @@ cpupm_init(cpu_t *cp)
 
 	if ((mach_state->ms_caps & CPUPM_T_STATES) ||
 	    (mach_state->ms_caps & CPUPM_P_STATES) ||
-	    (mach_state->ms_caps & CPUPM_C_STATES)) {
+	    (mach_state->ms_caps & CPUPM_C_STATES) ||
+	    (mach_state->ms_caps & CPUPM_PUR)) {
 		if (first) {
 			acpica_write_cpupm_capabilities(
 			    mach_state->ms_caps & CPUPM_P_STATES,
@@ -281,6 +290,9 @@ cpupm_init(cpu_t *cp)
 		}
 		if (mach_state->ms_caps & CPUPM_P_STATES) {
 			cpupm_power_manage_notifications(cp);
+		}
+		if (mach_state->ms_caps & CPUPM_PUR) {
+			cpupm_pur_notification(cp);
 		}
 		cpupm_add_notify_handler(cp, cpupm_event_notify_handler, cp);
 	}
@@ -323,8 +335,15 @@ cpupm_free(cpu_t *cp, boolean_t cpupm_stop)
 			mach_state->ms_cstate.cma_ops->cpus_stop(cp);
 		else
 			mach_state->ms_cstate.cma_ops->cpus_fini(cp);
-
 		mach_state->ms_cstate.cma_ops = NULL;
+	}
+
+	if (mach_state->ms_pur.cma_ops != NULL) {
+		if (cpupm_stop)
+			mach_state->ms_pur.cma_ops->cpus_stop(cp);
+		else
+			mach_state->ms_pur.cma_ops->cpus_fini(cp);
+		mach_state->ms_pur.cma_ops = NULL;
 	}
 
 	cpupm_free_notify_handlers(cp);
@@ -717,7 +736,6 @@ cpupm_plat_state_enumerate(cpu_t *cp, cpupm_dtype_t type,
 	 */
 	if (states != NULL) {
 		for (i = 0; i < nspeeds; i++) {
-			states[i].cps_speed = speeds[i];
 			states[i].cps_handle = (cpupm_handle_t)i;
 		}
 	}
@@ -932,17 +950,22 @@ cpupm_event_notify_handler(ACPI_HANDLE obj, UINT32 val, void *ctx)
 		return;
 
 	/*
-	 * Currently, we handle _TPC,_CST and _PPC change notifications.
+	 * Currently, we handle _TPC,_CST and _PPC change notifications
+	 * and _PUR notification.
 	 */
 	if (val == CPUPM_TPC_CHANGE_NOTIFICATION &&
 	    mach_state->ms_caps & CPUPM_T_STATES) {
 		cpupm_throttle_manage_notification(ctx);
 	} else if (val == CPUPM_CST_CHANGE_NOTIFICATION &&
-	    mach_state->ms_caps & CPUPM_C_STATES) {
+		   mach_state->ms_caps & CPUPM_C_STATES) {
 		cpuidle_manage_cstates(ctx);
-	} else if (val == CPUPM_PPC_CHANGE_NOTIFICATION &&
-	    mach_state->ms_caps & CPUPM_P_STATES) {
-		cpupm_power_manage_notifications(ctx);
+	} else {
+		if (val == CPUPM_PPC_CHANGE_NOTIFICATION &&
+		    mach_state->ms_caps & CPUPM_P_STATES)
+			cpupm_power_manage_notifications(ctx);
+		if (val == CPUPM_PUR_NOTIFICATION &&
+		    mach_state->ms_caps & CPUPM_PUR)
+			cpupm_pur_notification(ctx);
 	}
 #endif
 }

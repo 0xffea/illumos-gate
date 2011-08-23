@@ -66,6 +66,7 @@ typedef int	chipid_t;
 #define	P_POWEROFF	0x0005	/* processor is powered off */
 #define	P_NOINTR	0x0006	/* processor is online, but no I/O interrupts */
 #define	P_SPARE		0x0007	/* processor is offline, can be reactivated */
+#define P_PWRIDLE       0x0008  /* processor is offline, for power capping */
 #define	P_BAD		P_FAULTED	/* unused but defined by USL */
 #define	P_FORCED 	0x10000000	/* force processor offline */
 
@@ -78,6 +79,7 @@ typedef int	chipid_t;
 #define	PS_POWEROFF	"powered-off"
 #define	PS_NOINTR	"no-intr"
 #define	PS_SPARE	"spare"
+#define PS_PWRIDLE      "pwr-idle"
 
 /*
  * Structure filled in by processor_info(2). This structure

@@ -329,6 +329,10 @@ extern cpu_core_t cpu_core[];
  * suspended (in the suspend path), or have yet to be resumed (in the resume
  * case).
  *
+ * CPU_PWRIDLE is used only for power capping, it indicates that the system
+ * receives the requests to place a number of logical processors in an idle
+ * state to reduce platform power consumption.
+ *
  * On some platforms CPUs can be individually powered off.
  * The following flags are set for powered off CPUs: CPU_QUIESCED,
  * CPU_OFFLINE, and CPU_POWEROFF.  The following flags are cleared:
@@ -344,9 +348,10 @@ extern cpu_core_t cpu_core[];
 #define	CPU_FROZEN	0x080		/* CPU is frozen via CPR suspend */
 #define	CPU_SPARE	0x100		/* CPU offline available for use */
 #define	CPU_FAULTED	0x200		/* CPU offline diagnosed faulty */
+#define CPU_PWRIDLE     0x400           /* CPU offline for power capping */
 
 #define	FMT_CPU_FLAGS							\
-	"\20\12fault\11spare\10frozen"					\
+	"\20\13pwridle\12fault\11spare\10frozen"					\
 	"\7poweroff\6offline\5enable\4exist\3quiesced\2ready\1run"
 
 #define	CPU_ACTIVE(cpu)	(((cpu)->cpu_flags & CPU_OFFLINE) == 0)

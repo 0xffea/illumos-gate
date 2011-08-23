@@ -49,6 +49,7 @@ CORE_OBJS +=			\
 	cpupm_amd.o		\
 	cpupm_intel.o		\
 	cpupm_throttle.o	\
+	cpupm_pur.o		\
 	cpu_acpi.o		\
 	dis_tables.o		\
 	ddi_impl.o		\

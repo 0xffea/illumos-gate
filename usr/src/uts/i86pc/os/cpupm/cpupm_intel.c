@@ -19,12 +19,11 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved.
  */
 
 /*
- * Copyright (c) 2009, Intel Corporation.
+ * Copyright (c) 2010, Intel Corporation.
  * All rights reserved.
  */
 
@@ -36,6 +35,7 @@
 #include <sys/cpu_acpi.h>
 #include <sys/speedstep.h>
 #include <sys/cpupm_throttle.h>
+#include <sys/cpupm_pur.h>
 #include <sys/cpu_idle.h>
 #include <sys/archsystm.h>
 
@@ -128,6 +128,8 @@ cpupm_intel_init(cpu_t *cp)
 	mach_state->ms_cstate.cma_ops = &cpu_idle_ops;
 	cpupm_intel_pdccap |= CPUPM_INTEL_PDC_C1_HALT |
 	    CPUPM_INTEL_PDC_C2C3_MP | CPUPM_INTEL_PDC_C1_FFH;
+
+	mach_state->ms_pur.cma_ops = &pur_ops;
 
 	/*
 	 * _PDC support is optional and the driver should
