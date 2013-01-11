@@ -132,9 +132,9 @@ typedef struct lwp_info {	/* per-lwp information from core file */
 	lwpid_t	lwp_id;		/* lwp identifier */
 	lwpsinfo_t lwp_psinfo;	/* /proc/<pid>/lwp/<lwpid>/lwpsinfo data */
 	lwpstatus_t lwp_status;	/* /proc/<pid>/lwp/<lwpid>/lwpstatus data */
+	prxregset_t *lwp_xregs;	/* /proc/<pid>/lwp/<lwpid>/xregs data */
 #if defined(sparc) || defined(__sparc)
 	gwindows_t *lwp_gwins;	/* /proc/<pid>/lwp/<lwpid>/gwindows data */
-	prxregset_t *lwp_xregs;	/* /proc/<pid>/lwp/<lwpid>/xregs data */
 	int64_t *lwp_asrs;	/* /proc/<pid>/lwp/<lwpid>/asrs data */
 #endif
 } lwp_info_t;

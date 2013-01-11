@@ -72,6 +72,13 @@ typedef	struct ucontext ucontext_t;
 typedef	struct __ucontext ucontext_t;
 #endif /* !defined(_XPG4_2) || defined(__EXTENSIONS__) */
 
+#define	XRS_ID	0x00737278	/* the string "xrs" */
+
+typedef struct {
+	unsigned long	xrs_id;
+	caddr_t		xrs_ptr;
+} xrs_t;
+
 #if !defined(_XPG4_2) || defined(__EXTENSIONS__)
 struct	ucontext {
 #else
@@ -82,10 +89,16 @@ struct	__ucontext {
 	sigset_t   	uc_sigmask;
 	stack_t 	uc_stack;
 	mcontext_t 	uc_mcontext;
-	long		uc_filler[5];	/* see ABI spec for Intel386 */
+	xrs_t		uc_xrs;
+	long		uc_filler[3];	/* see ABI spec for Intel386 */
 };
 
 #if defined(_SYSCALL32)
+
+typedef struct {
+	uint32_t	xrs_id;
+	caddr32_t	xrs_ptr;
+} xrs32_t;
 
 /* Kernel view of user ILP32 ucontext structure */
 
@@ -95,7 +108,8 @@ typedef struct ucontext32 {
 	sigset_t	uc_sigmask;
 	stack32_t	uc_stack;
 	mcontext32_t	uc_mcontext;
-	int32_t		uc_filler[5];
+	xrs32_t		uc_xrs;
+	int32_t		uc_filler[3];
 } ucontext32_t;
 
 #if defined(_KERNEL)
@@ -122,6 +136,7 @@ extern void ucontext_32ton(const ucontext32_t *src, ucontext_t *dest);
 #define	UC_STACK	0x02
 #define	UC_CPU		0x04
 #define	UC_MAU		0x08
+#define	UC_XREGS	0x10
 #define	UC_FPU		UC_MAU
 
 #define	UC_MCONTEXT	(UC_CPU|UC_FPU)

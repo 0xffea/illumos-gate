@@ -256,11 +256,7 @@ prioctl(
 		break;
 	case PIOCSXREG:		/* set extra registers */
 	case PIOCGXREG:		/* get extra registers */
-#if defined(__sparc)
 		thingsize = sizeof (prxregset_t);
-#else
-		thingsize = 0;
-#endif
 		break;
 	case PIOCACTION:
 		thingsize = (nsig-1) * sizeof (struct sigaction);

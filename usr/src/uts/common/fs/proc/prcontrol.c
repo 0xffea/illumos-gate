@@ -59,8 +59,8 @@
 
 static	void	pr_settrace(proc_t *, sigset_t *);
 static	int	pr_setfpregs(prnode_t *, prfpregset_t *);
-#if defined(__sparc)
 static	int	pr_setxregs(prnode_t *, prxregset_t *);
+#if defined(__sparc)
 static	int	pr_setasrs(prnode_t *, asrset_t);
 #endif
 static	int	pr_setvaddr(prnode_t *, caddr_t);
@@ -87,8 +87,8 @@ typedef union {
 	sysset_t	sysset;		/* PCSENTRY, PCSEXIT */
 	prgregset_t	prgregset;	/* PCSREG, PCAGENT */
 	prfpregset_t	prfpregset;	/* PCSFPREG */
-#if defined(__sparc)
 	prxregset_t	prxregset;	/* PCSXREG */
+#if defined(__sparc)
 	asrset_t	asrset;		/* PCSASRS */
 #endif
 	prwatch_t	prwatch;	/* PCWATCH */
@@ -152,10 +152,10 @@ ctlsize(long cmd, size_t resid, arg_t *argp)
 	case PCSFPREG:
 		size += sizeof (prfpregset_t);
 		break;
-#if defined(__sparc)
 	case PCSXREG:
 		size += sizeof (prxregset_t);
 		break;
+#if defined(__sparc)
 	case PCSASRS:
 		size += sizeof (asrset_t);
 		break;
@@ -418,11 +418,7 @@ pr_control(long cmd, arg_t *argp, prnode_t *pnp, cred_t *cr)
 		break;
 
 	case PCSXREG:	/* set extra registers */
-#if defined(__sparc)
 		error = pr_setxregs(pnp, &argp->prxregset);
-#else
-		error = EINVAL;
-#endif
 		break;
 
 #if defined(__sparc)
@@ -503,9 +499,7 @@ typedef union {
 	sysset_t	sysset;		/* PCSENTRY, PCSEXIT */
 	prgregset32_t	prgregset;	/* PCSREG, PCAGENT */
 	prfpregset32_t	prfpregset;	/* PCSFPREG */
-#if defined(__sparc)
 	prxregset_t	prxregset;	/* PCSXREG */
-#endif
 	prwatch32_t	prwatch;	/* PCWATCH */
 	priovec32_t	priovec;	/* PCREAD, PCWRITE */
 	prcred32_t	prcred;		/* PCSCRED */
@@ -573,11 +567,9 @@ ctlsize32(int32_t cmd, size_t resid, arg32_t *argp)
 	case PCSFPREG:
 		size += sizeof (prfpregset32_t);
 		break;
-#if defined(__sparc)
 	case PCSXREG:
 		size += sizeof (prxregset_t);
 		break;
-#endif
 	case PCWATCH:
 		size += sizeof (prwatch32_t);
 		break;
@@ -866,14 +858,10 @@ pr_control32(int32_t cmd, arg32_t *argp, prnode_t *pnp, cred_t *cr)
 		break;
 
 	case PCSXREG:	/* set extra registers */
-#if defined(__sparc)
 		if (PROCESS_NOT_32BIT(p))
 			error = EOVERFLOW;
 		else
 			error = pr_setxregs(pnp, &argp->prxregset);
-#else
-		error = EINVAL;
-#endif
 		break;
 
 	case PCSVADDR:	/* set virtual address at which to resume */
@@ -1706,7 +1694,6 @@ pr_setfpregs32(prnode_t *pnp, prfpregset32_t *prfpregset)
 }
 #endif	/* _SYSCALL32_IMPL */
 
-#if defined(__sparc)
 /* ARGSUSED */
 static int
 pr_setxregs(prnode_t *pnp, prxregset_t *prxregset)
@@ -1731,6 +1718,7 @@ pr_setxregs(prnode_t *pnp, prxregset_t *prxregset)
 	return (0);
 }
 
+#if defined(__sparc)
 static int
 pr_setasrs(prnode_t *pnp, asrset_t asrset)
 {

@@ -23,8 +23,6 @@
  * Use is subject to license terms.
  */
 
-#pragma ident	"%Z%%M%	%I%	%E% SMI"
-
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <string.h>
@@ -219,7 +217,6 @@ int Plwp_setfpregs(struct ps_prochandle *P, lwpid_t lwpid,
 	return (setlwpregs(P, lwpid, PCSFPREG, fpregs, sizeof (prfpregset_t)));
 }
 
-#if defined(sparc) || defined(__sparc)
 int
 Plwp_getxregs(struct ps_prochandle *P, lwpid_t lwpid, prxregset_t *xregs)
 {
@@ -256,6 +253,7 @@ Plwp_setxregs(struct ps_prochandle *P, lwpid_t lwpid, const prxregset_t *xregs)
 	return (setlwpregs(P, lwpid, PCSXREG, xregs, sizeof (prxregset_t)));
 }
 
+#if defined(sparc) || defined(__sparc)
 int
 Plwp_getgwindows(struct ps_prochandle *P, lwpid_t lwpid, gwindows_t *gwins)
 {

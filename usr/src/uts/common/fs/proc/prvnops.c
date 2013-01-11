@@ -1524,7 +1524,6 @@ out:
 static int
 pr_read_xregs(prnode_t *pnp, uio_t *uiop)
 {
-#if defined(__sparc)
 	proc_t *p;
 	kthread_t *t;
 	int error;
@@ -1557,9 +1556,6 @@ pr_read_xregs(prnode_t *pnp, uio_t *uiop)
 out:
 	kmem_free(xreg, sizeof (prxregset_t));
 	return (error);
-#else
-	return (0);
-#endif
 }
 
 #if defined(__sparc)

@@ -27,8 +27,6 @@
 #ifndef _SYS_PROCFS_ISA_H
 #define	_SYS_PROCFS_ISA_H
 
-#pragma ident	"%Z%%M%	%I%	%E% SMI"
-
 /*
  * Instruction Set Architecture specific component of <sys/procfs.h>
  * i386 version
@@ -113,6 +111,64 @@ typedef	uchar_t		instr32_t;
 #define	R_R0	EAX
 #define	R_R1	EDX
 #endif
+
+#define	XR_TYPE_XSAVE	0x101
+
+typedef struct prxregset {
+	uint32_t	pr_type;
+	uint32_t	pr_align;
+	uint32_t	pr_xsize;
+	uint32_t	pr_pad;
+	union {
+		struct pr_xsave {
+			uint16_t	pr_fcw;
+			uint16_t	pr_fsw;
+			uint16_t	pr_fctw;
+			uint16_t	pr_fop;
+#if defined(__amd64)
+			uint64_t	pr_rip;
+			uint64_t	pr_rdp;
+#else
+			uint32_t	pr_eip;
+			uint16_t	pr_cs;
+			uint16_t	__pr_ign0;
+			uint32_t	pr_dp;
+			uint16_t	pr_ds;
+			uint16_t	__pr_ign1;
+#endif
+			uint32_t	pr_mxcsr;
+			uint32_t	pr_mxcsr_mask;
+			union {
+				uint16_t	pr_fpr_16[5];
+				u_longlong_t	pr_fpr_mmx;
+				uint32_t	__pr_fpr_pad[4];
+			} pr_st[8];
+#if defined(__amd64)
+			upad128_t	pr_xmm[16];
+			upad128_t	__pr_ign2[3];
+#else
+			upad128_t	pr_xmm[8];
+			upad128_t	__pr_ign2[11];
+#endif
+			union {
+				struct {
+					uint64_t	pr_xcr0;
+					uint64_t	pr_mbz[2];
+				} pr_xsave_info;
+				upad128_t	__pr_pad[3];
+			} pr_sw_avail;
+			uint64_t	pr_xstate_bv;
+			uint64_t	pr_rsv_mbz[2];
+			uint64_t	pr_reserved[5];
+#if defined(__amd64)
+			upad128_t	pr_ymm[16];
+#else
+			upad128_t	pr_ymm[8];
+			upad128_t	__pr_ign3[8];
+#endif
+		} pr_xsave;
+	} pr_un;
+} prxregset_t;
 
 #ifdef	__cplusplus
 }

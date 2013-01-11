@@ -238,27 +238,25 @@ prsetprfpregs32(klwp_t *lwp, prfpregset32_t *pfp)
 /*
  * Does the system support extra register state?
  */
-/* ARGSUSED */
 int
 prhasx(proc_t *p)
 {
-	return (0);
+	/* XXX */
+	return (1);
 }
 
 /*
  * Get the size of the extra registers.
  */
-/* ARGSUSED */
 int
 prgetprxregsize(proc_t *p)
 {
-	return (0);
+	return (xregs_getsize(p));
 }
 
 /*
  * Get extra registers.
  */
-/*ARGSUSED*/
 void
 prgetprxregs(klwp_t *lwp, caddr_t prx)
 {
@@ -268,7 +266,6 @@ prgetprxregs(klwp_t *lwp, caddr_t prx)
 /*
  * Set extra registers.
  */
-/*ARGSUSED*/
 void
 prsetprxregs(klwp_t *lwp, caddr_t prx)
 {

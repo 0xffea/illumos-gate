@@ -23,8 +23,6 @@
  * Use is subject to license terms.
  */
 
-#pragma ident	"%Z%%M%	%I%	%E% SMI"
-
 #include <stdarg.h>
 #include <string.h>
 #include "Pcontrol.h"
@@ -166,8 +164,6 @@ ps_lsetfpregs(struct ps_prochandle *P, lwpid_t lwpid, const prfpregset_t *regs)
 	return (PS_BADLID);
 }
 
-#if defined(sparc) || defined(__sparc)
-
 ps_err_e
 ps_lgetxregsize(struct ps_prochandle *P, lwpid_t lwpid, int *xrsize)
 {
@@ -226,8 +222,6 @@ ps_lsetxregs(struct ps_prochandle *P, lwpid_t lwpid, caddr_t xregs)
 
 	return (PS_BADLID);
 }
-
-#endif	/* sparc */
 
 #if defined(__i386) || defined(__amd64)
 

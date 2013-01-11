@@ -369,10 +369,10 @@ extern int Plwp_getfpregs(struct ps_prochandle *, lwpid_t, prfpregset_t *);
 extern int Plwp_setfpregs(struct ps_prochandle *, lwpid_t,
     const prfpregset_t *);
 
-#if defined(__sparc)
-
 extern int Plwp_getxregs(struct ps_prochandle *, lwpid_t, prxregset_t *);
 extern int Plwp_setxregs(struct ps_prochandle *, lwpid_t, const prxregset_t *);
+
+#if defined(__sparc)
 
 extern int Plwp_getgwindows(struct ps_prochandle *, lwpid_t, gwindows_t *);
 
