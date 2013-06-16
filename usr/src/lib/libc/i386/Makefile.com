@@ -816,7 +816,8 @@ PORTLOCALE=			\
 	wctrans.o		\
 	wctype.o		\
 	wcwidth.o		\
-	wscol.o
+	wscol.o			\
+	xlocale.o
 
 AIOOBJS=			\
 	aio.o			\

@@ -3,6 +3,11 @@
  * Copyright (c) 1989 The Regents of the University of California.
  * All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms are permitted
  * provided that the above copyright notice and this paragraph are
  * duplicated in all such forms and that any documentation,
@@ -26,7 +31,8 @@
 
 static char *_add(const char *, char *, const char *);
 static char *_conv(int, const char *, char *, const char *);
-static char *_fmt(const char *, const struct tm *, char *, const char * const);
+static char *_fmt(const char *, const struct tm *, char *, const char * const,
+    int *, locale_t);
 static char *_yconv(int, int, int, int, char *, const char *);
 
 extern char *tzname[];
@@ -62,24 +68,38 @@ static const char *fmt_padding[][4] = {
 
 
 size_t
-strftime(char *_RESTRICT_KYWD s, size_t maxsize,
-    const char *_RESTRICT_KYWD format, const struct tm *_RESTRICT_KYWD t)
+strftime_l(char *_RESTRICT_KYWD s, size_t maxsize,
+    const char *_RESTRICT_KYWD format, const struct tm *_RESTRICT_KYWD t,
+    locale_t loc)
 {
-	char *p;
+	char 	*p;
+	int	warn;
+	FIX_LOCALE(loc);
 
 	tzset();
-	p = _fmt(((format == NULL) ? "%c" : format), t, s, s + maxsize);
+	warn = IN_NONE;
+	p = _fmt(((format == NULL) ? "%c" : format), t, s, s + maxsize,
+	    &warn, loc);
+	/* XXX YEAR_2000 */
 	if (p == s + maxsize)
 		return (0);
 	*p = '\0';
 	return (p - s);
 }
 
+size_t
+strftime(char *_RESTRICT_KYWD s, size_t maxsize,
+    const char *_RESTRICT_KYWD format, const struct tm *_RESTRICT_KYWD t)
+{
+	return (strftime_l(s, maxsize, format, t, __get_locale()));
+}
+
 static char *
-_fmt(const char *format, const struct tm *t, char *pt, const char * const ptlim)
+_fmt(const char *format, const struct tm *t, char *pt, const char * const ptlim,
+    int *warnp, locale_t loc)
 {
 	int Ealternative, Oalternative, PadIndex;
-	struct lc_time_T *tptr = __get_current_time_locale();
+	struct lc_time_T *tptr = __get_current_time_locale(loc);
 
 #define	PADDING(x)	fmt_padding[x][PadIndex]
 
@@ -130,10 +150,17 @@ label:
 				    pt, ptlim);
 				continue;
 			case 'c':
-				pt = _fmt(tptr->c_fmt, t, pt, ptlim);
+			{
+				int warn2 = IN_SOME;
+
+				pt = _fmt(tptr->c_fmt, t, pt, ptlim, &warn2,
+				    loc);
+				/* XXX */
+			}
 				continue;
 			case 'D':
-				pt = _fmt("%m/%d/%y", t, pt, ptlim);
+				pt = _fmt("%m/%d/%y", t, pt, ptlim, warnp,
+				    loc);
 				continue;
 			case 'd':
 				pt = _conv(t->tm_mday,
@@ -163,7 +190,8 @@ label:
 				    PADDING(PAD_FMT_SDAYOFMONTH), pt, ptlim);
 				continue;
 			case 'F':
-				pt = _fmt("%Y-%m-%d", t, pt, ptlim);
+				pt = _fmt("%Y-%m-%d", t, pt, ptlim, warnp,
+				    loc);
 				continue;
 			case 'H':
 				pt = _conv(t->tm_hour, PADDING(PAD_FMT_HMS),
@@ -223,10 +251,11 @@ label:
 				    tptr->pm : tptr->am, pt, ptlim);
 				continue;
 			case 'R':
-				pt = _fmt("%H:%M", t, pt, ptlim);
+				pt = _fmt("%H:%M", t, pt, ptlim, warnp, loc);
 				continue;
 			case 'r':
-				pt = _fmt(tptr->ampm_fmt, t, pt, ptlim);
+				pt = _fmt(tptr->ampm_fmt, t, pt, ptlim,
+				    warnp, loc);
 				continue;
 			case 'S':
 				pt = _conv(t->tm_sec, PADDING(PAD_FMT_HMS),
@@ -237,15 +266,15 @@ label:
 			{
 				struct tm tm;
 				char *buf;
-
+/* XXX */
 				tm = *t;
 				(void) asprintf(&buf, "%ld", mktime(&tm));
 				pt = _add(buf, pt, ptlim);
-				continue;
 			}
-
+				continue;
 			case 'T':
-				pt = _fmt("%H:%M:%S", t, pt, ptlim);
+				pt = _fmt("%H:%M:%S", t, pt, ptlim,
+				    warnp, loc);
 				continue;
 			case 't':
 				pt = _add("\t", pt, ptlim);
@@ -357,7 +386,8 @@ label:
 				 * "date as dd-bbb-YYYY"
 				 * (ado, 1993-05-24)
 				 */
-				pt = _fmt("%e-%b-%Y", t, pt, ptlim);
+				pt = _fmt("%e-%b-%Y", t, pt, ptlim,
+				    warnp, loc);
 				continue;
 			case 'W':
 				pt = _conv((t->tm_yday + DAYSPERWEEK -
@@ -371,10 +401,16 @@ label:
 				pt = _conv(t->tm_wday, "%d", pt, ptlim);
 				continue;
 			case 'X':
-				pt = _fmt(tptr->X_fmt, t, pt, ptlim);
+				pt = _fmt(tptr->X_fmt, t, pt, ptlim,
+				    warnp, loc);
 				continue;
 			case 'x':
-				pt = _fmt(tptr->x_fmt, t, pt, ptlim);
+			{
+				int	warn2 = IN_SOME;
+
+				pt = _fmt(tptr->x_fmt, t, pt, ptlim,
+				    &warn2, loc);
+			}
 				continue;
 			case 'y':
 				pt = _yconv(t->tm_year, TM_YEAR_BASE, 0, 1,
@@ -438,7 +474,8 @@ label:
 				}
 				continue;
 			case '+':
-				pt = _fmt(tptr->date_fmt, t, pt, ptlim);
+				pt = _fmt(tptr->date_fmt, t, pt, ptlim,
+				    warnp, loc);
 				continue;
 			case '-':
 				if (PadIndex != PAD_DEFAULT)

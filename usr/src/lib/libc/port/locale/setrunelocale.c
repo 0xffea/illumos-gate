@@ -6,6 +6,11 @@
  * This code is derived from software contributed to Berkeley by
  * Paul Borman at Krystal Technologies.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -47,18 +52,24 @@
 #include "_ctype.h"
 #include "../i18n/_locale.h"
 
+/*
+ * A cached version of the runes for this thread.  Used by ctype.h
+ */
+__thread const _RuneLocale *_ThreadRuneLocale;
+
 extern _RuneLocale	*_Read_RuneMagi(FILE *);
 extern unsigned char	__ctype_C[];
 
-static int		__setrunelocale(const char *);
+static int		__setrunelocale(struct xlocale_ctype *, const char *);
 
 static int
-__setrunelocale(const char *encoding)
+__setrunelocale(struct xlocale_ctype *l, const char *encoding)
 {
 	FILE *fp;
 	char name[PATH_MAX];
 	_RuneLocale *rl;
 	int saverr, ret;
+	struct xlocale_ctype saved = *l; /* XXX DOUBLE NOT USED */
 	size_t (*old__mbrtowc)(wchar_t *_RESTRICT_KYWD,
 	    const char *_RESTRICT_KYWD, size_t, mbstate_t *_RESTRICT_KYWD);
 	size_t (*old__wcrtomb)(char *_RESTRICT_KYWD, wchar_t,
@@ -98,7 +109,7 @@ __setrunelocale(const char *encoding)
 			__trans_lower[i] = _DefaultRuneLocale.__maplower[i];
 		}
 
-		(void) _none_init(&_DefaultRuneLocale);
+		(void) _none_init(l, &_DefaultRuneLocale);
 		return (0);
 	}
 
@@ -107,12 +118,12 @@ __setrunelocale(const char *encoding)
 	 */
 	if (CachedRuneLocale != NULL &&
 	    strcmp(encoding, ctype_encoding) == 0) {
-		_CurrentRuneLocale = CachedRuneLocale;
-		__mbrtowc = Cached__mbrtowc;
-		__mbsinit = Cached__mbsinit;
-		__mbsnrtowcs = Cached__mbsnrtowcs;
-		__wcrtomb = Cached__wcrtomb;
-		__wcsnrtombs = Cached__wcsnrtombs;
+		l->runes = CachedRuneLocale;
+		l->__mbrtowc = Cached__mbrtowc;
+		l->__mbsinit = Cached__mbsinit;
+		l->__mbsnrtowcs = Cached__mbsnrtowcs;
+		l->__wcrtomb = Cached__wcrtomb;
+		l->__wcsnrtombs = Cached__wcsnrtombs;
 		return (0);
 	}
 
@@ -139,14 +150,14 @@ __setrunelocale(const char *encoding)
 	old__wcrtomb = __wcrtomb;
 	old__wcsnrtombs = __wcsnrtombs;
 
-	__mbrtowc = NULL;
-	__mbsinit = NULL;
-	__mbsnrtowcs = __mbsnrtowcs_std;
-	__wcrtomb = NULL;
-	__wcsnrtombs = __wcsnrtombs_std;
+	l->__mbrtowc = NULL;
+	l->__mbsinit = NULL;
+	l->__mbsnrtowcs = __mbsnrtowcs_std;
+	l->__wcrtomb = NULL;
+	l->__wcsnrtombs = __wcsnrtombs_std;
 
 	if (strcmp(rl->__encoding, "NONE") == 0)
-		ret = _none_init(rl);
+		ret = _none_init(l, rl);
 	else if (strcmp(rl->__encoding, "UTF-8") == 0)
 		ret = _UTF8_init(rl);
 	else if (strcmp(rl->__encoding, "EUC-CN") == 0)
@@ -174,12 +185,12 @@ __setrunelocale(const char *encoding)
 		if (CachedRuneLocale != NULL) {
 			free(CachedRuneLocale);
 		}
-		CachedRuneLocale = _CurrentRuneLocale;
-		Cached__mbrtowc = __mbrtowc;
-		Cached__mbsinit = __mbsinit;
-		Cached__mbsnrtowcs = __mbsnrtowcs;
-		Cached__wcrtomb = __wcrtomb;
-		Cached__wcsnrtombs = __wcsnrtombs;
+		CachedRuneLocale = l->runes;
+		Cached__mbrtowc = l->__mbrtowc;
+		Cached__mbsinit = l->__mbsinit;
+		Cached__mbsnrtowcs = l->__mbsnrtowcs;
+		Cached__wcrtomb = l->__wcrtomb;
+		Cached__wcsnrtombs = l->__wcsnrtombs;
 		(void) strcpy(ctype_encoding, encoding);
 
 		/*
@@ -228,11 +239,11 @@ __setrunelocale(const char *encoding)
 		 * the CSWIDTH array (__ctype[514-520]) properly.
 		 */
 	} else {
-		__mbrtowc = old__mbrtowc;
-		__mbsinit = old__mbsinit;
-		__mbsnrtowcs = old__mbsnrtowcs;
-		__wcrtomb = old__wcrtomb;
-		__wcsnrtombs = old__wcsnrtombs;
+		l->__mbrtowc = old__mbrtowc;
+		l->__mbsinit = old__mbsinit;
+		l->__mbsnrtowcs = old__mbsnrtowcs;
+		l->__wcrtomb = old__wcrtomb;
+		l->__wcsnrtombs = old__wcsnrtombs;
 		free(rl);
 	}
 
@@ -242,11 +253,37 @@ __setrunelocale(const char *encoding)
 int
 __wrap_setrunelocale(const char *locale)
 {
-	int ret = __setrunelocale(locale);
+	int ret = __setrunelocale(&__xlocale_global_ctype, locale);
 
 	if (ret != 0) {
 		errno = ret;
 		return (_LDP_ERROR);
 	}
+	/* XXX */
+//	__mb_cur_max = __xlocale_global_ctype.__mb_cur_max;
+//	__mb_sb_limit = __xlocale_global_ctype.__mb_sb_limit;
+	_CurrentRuneLocale = __xlocale_global_ctype.runes;
 	return (_LDP_LOADED);
+}
+
+void
+__set_thread_rune_locale(locale_t loc)
+{
+
+	if (loc == NULL) {
+		_ThreadRuneLocale = &_DefaultRuneLocale;
+	} else {
+		_ThreadRuneLocale = XLOCALE_CTYPE(loc)->runes;
+	}
+}
+
+void *
+__ctype_load(const char *locale, locale_t unused)
+{
+	struct xlocale_ctype *l;
+
+	l = calloc(sizeof(struct xlocale_ctype), 1);
+	/* XXX */
+
+	return (l);
 }

@@ -90,6 +90,17 @@ $if _x86 && _ELF64
 $add amd64
 $endif
 
+SYMBOL_VERSION ILLUMOS_0.5 {	# Illumos additions
+    protected:
+	strftime_l;
+	nl_langinfo_l;
+	duplocale;
+	freelocale;
+	newlocale;
+	querylocale;
+	uselocale;
+} ILLUMOS_0.4;
+
 SYMBOL_VERSION ILLUMOS_0.4 {	# Illumos additions
     protected:
         pipe2;

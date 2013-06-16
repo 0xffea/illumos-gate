@@ -3,6 +3,11 @@
  * Copyright (c) 2001, 2003 Alexey Zelkin <phantom@FreeBSD.org>
  * All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -39,15 +44,15 @@
 
 #define	_REL(BASE) ((int)item-BASE)
 
-#define	MONETARY	(__get_current_monetary_locale())
-#define	TIME		(__get_current_time_locale())
-#define	MESSAGES	(__get_current_messages_locale())
-#define	NUMERIC		(__get_current_numeric_locale())
+#define	MONETARY	(__get_current_monetary_locale(loc))
+#define	TIME		(__get_current_time_locale(loc))
+#define	MESSAGES	(__get_current_messages_locale(loc))	/* XXX */
+#define	NUMERIC		(__get_current_numeric_locale(loc))
 
 #pragma weak _nl_langinfo = nl_langinfo
 
 char *
-nl_langinfo(nl_item item)
+nl_langinfo_l(nl_item item, locale_t loc)
 {
 	char *ret, *s, *cs;
 	static char *csym = NULL;
@@ -193,4 +198,10 @@ nl_langinfo(nl_item item)
 		ret = "";
 	}
 	return (ret);
+}
+
+char *
+nl_langinfo(nl_item item)
+{
+	return (nl_langinfo_l(item, __get_locale()));
 }

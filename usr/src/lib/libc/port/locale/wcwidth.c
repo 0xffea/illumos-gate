@@ -65,6 +65,13 @@ wcwidth(wchar_t wc)
 
 #pragma weak _scrwidth = scrwidth
 
+int
+wcwidth(wchar_t wc, locale_t locale)
+{
+	/* XXX */
+	return (0);
+}
+
 /*
  * This is a Solaris extension.  It never returns a negative width, even for
  * non-printable characters.  It is used internally by the printf

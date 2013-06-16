@@ -65,6 +65,38 @@ static char			collate_encoding[ENCODING_LEN + 1];
 collate_info_t			*_collate_info;
 int _collate_load_error = 1;
 
+struct xlocale_collate __xlocale_global_collate = {
+	{{0}, "C"}, 1, 0
+};
+
+struct xlocale_collate __xlocale_C_collate = {
+	{{0}, "C"}, 1, 0
+};
+
+static void
+destruct_collate(void *t)
+{
+	struct xlocale_collate *table = t;
+
+	/* XXX */;
+}
+
+void *
+__collate_load(const char *encoding, locale_t unused)
+{
+	struct xlocale_collate *table;
+
+	if (strcmp(encoding, "C") == 0 || strcmp(encoding, "POSIX") == 0) {
+		return &__xlocale_C_collate;
+	}
+
+	table = calloc(sizeof(struct xlocale_collate), 1);
+	if (table == NULL) {
+		/* XXX */
+	}
+
+	return (table);
+}
 
 int
 _collate_load_tables(const char *encoding)

@@ -3,6 +3,11 @@
  * Copyright (c) 2000, 2001 Alexey Zelkin <phantom@FreeBSD.org>
  * All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -31,7 +36,6 @@
 #include "lnumeric.h"
 #include "../i18n/_locale.h"
 
-extern int __nlocale_changed;
 extern const char *__fix_locale_grouping_str(const char *);
 
 #define	LCNUMERIC_SIZE (sizeof (struct lc_numeric_T) / sizeof (char *))
@@ -44,42 +48,80 @@ static const struct lc_numeric_T _C_numeric_locale = {
 	numempty	/* grouping */
 };
 
-static struct lc_numeric_T _numeric_locale;
-static int	_numeric_using_locale;
-static char	*_numeric_locale_buf;
+static void
+destruct_numeric(void *v)
+{
+	struct xlocale_numeric *l = v;
+
+	if (l->buffer != NULL)
+		free(l->buffer);
+
+	free(l);
+}
+
+struct xlocale_numeric __xlocale_global_numeric;
+
+static int
+numeric_load_locale(struct xlocale_numeric *loc, int *using_locale,
+    int *changed, const char *name)
+{
+	int leg;
+	int ret;
+	struct lc_numeric_T *l = &loc->locale;
+
+	ret = __part_load_locale(name, using_locale,
+	    &loc->buffer, "LC_NUMERIC",
+	    LCNUMERIC_SIZE, LCNUMERIC_SIZE,
+	    (const char **)l);
+	if (ret != _LDP_ERROR)
+		*changed = 1;
+
+	if (ret == _LDP_LOADED) {
+		/* Can't be empty according to C99 */
+		if (*l->decimal_point == '\0')
+			l->decimal_point =
+			    _C_numeric_locale.decimal_point;
+		l->grouping =
+		    __fix_locale_grouping_str(l->grouping);
+		// XXX leg = (const struct lc_numeric_T *)&_numeric_locale;
+	}
+	/* This is Solaris legacy, required for ABI compatability */
+	// _numeric[0] = *leg->decimal_point;
+	// _numeric[1] = *leg->grouping;
+	return (ret);
+}
 
 int
 __numeric_load_locale(const char *name)
 {
-	const struct lc_numeric_T *leg = &_C_numeric_locale;
+	return (numeric_load_locale(&__xlocale_global_numeric,
+	    &__xlocale_global_locale.using_numeric_locale,
+	    &__xlocale_global_locale.numeric_locale_changed, name));
+}
 
-	int ret;
+void *
+__numeric_load(const char *name, locale_t l)
+{
+	struct xlocale_numeric *new;
 
-	ret = __part_load_locale(name, &_numeric_using_locale,
-	    &_numeric_locale_buf, "LC_NUMERIC", LCNUMERIC_SIZE, LCNUMERIC_SIZE,
-	    (const char **)&_numeric_locale);
-	if (ret == _LDP_ERROR)
-		return (_LDP_ERROR);
+	new = calloc(sizeof(struct xlocale_numeric), 1);
+	if (new == NULL)
+		return (NULL);
 
-	__nlocale_changed = 1;
-	if (ret == _LDP_LOADED) {
-		/* Can't be empty according to C99 */
-		if (*_numeric_locale.decimal_point == '\0')
-			_numeric_locale.decimal_point =
-			    _C_numeric_locale.decimal_point;
-		_numeric_locale.grouping =
-		    __fix_locale_grouping_str(_numeric_locale.grouping);
-		leg = (const struct lc_numeric_T *)&_numeric_locale;
+	new->header.header.destructor = destruct_numeric;
+	if (numeric_load_locale(new, &l->using_numeric_locale,
+	    &l->numeric_locale_changed, name) == _LDP_ERROR) {
+		xlocale_release(new);
+		return (NULL);
 	}
-	/* This is Solaris legacy, required for ABI compatability */
-	_numeric[0] = *leg->decimal_point;
-	_numeric[1] = *leg->grouping;
-	return (ret);
+
+	return (new);
 }
 
 struct lc_numeric_T *
-__get_current_numeric_locale(void)
+__get_current_numeric_locale(locale_t loc)
 {
-	return (_numeric_using_locale ? &_numeric_locale :
-	    (struct lc_numeric_T *)&_C_numeric_locale);
+	return (loc->using_numeric_locale
+	    ? &((struct xlocale_numeric *)loc->components[XLC_NUMERIC])->locale
+	    : (struct lc_numeric_T *)&_C_numeric_locale);
 }

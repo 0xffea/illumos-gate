@@ -32,6 +32,8 @@
 #include <sys/types.h>
 #include <limits.h>
 
+#include "xlocale_private.h"
+
 #define	COLLATE_STR_LEN		24		/* should be 64-bit multiple */
 #define	COLLATE_VERSION		"IllumosCollate2\n"
 
@@ -91,6 +93,14 @@ typedef struct collate_subst {
 	int32_t key;
 	int32_t pri[COLLATE_STR_LEN];
 } collate_subst_t;
+
+struct xlocale_collate {
+	struct xlocale_component header;
+	int __collate_load_error;
+	int __collate_substitute_nontrivial;
+
+	/* XXX */
+};
 
 int	_collate_load_tables(const char *);
 void	_collate_lookup(const wchar_t *, int *, int *, int, int **);

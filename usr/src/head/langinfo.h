@@ -31,8 +31,6 @@
 #ifndef	_LANGINFO_H
 #define	_LANGINFO_H
 
-#pragma ident	"%Z%%M%	%I%	%E% SMI"	/* SVr4.0 1.2	*/
-
 #include <sys/feature_tests.h>
 #include <nl_types.h>
 
@@ -141,13 +139,20 @@ extern "C" {
 #define	MAXSTRMSG	58 /* Maximum number of strings in langinfo */
 #endif /* defined(__EXTENSIONS__) || !defined(_XOPEN_SOURCE) */
 
+#ifndef _LOCALE_T_DEFINED
+#define _LOCALE_T_DEFINED
+typedef struct	_xlocale *locale_t;
+#endif
+
 /*
  * and the definitions of functions langinfo(3C)
  */
 #if defined(__STDC__)
-char   *nl_langinfo(nl_item);	/* get a string from the database	*/
+char	*nl_langinfo(nl_item);	/* get a string from the database	*/
+char	*nl_langinfo_l(nl_item, locale_t);
 #else
-char   *nl_langinfo();		/* get a string from the database	*/
+char	*nl_langinfo();		/* get a string from the database	*/
+char	*nl_langinfo_l();
 #endif
 
 #ifdef	__cplusplus

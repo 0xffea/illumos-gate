@@ -33,6 +33,7 @@
 
 extern char *_PathLocale;
 
+const char *__get_locale_env(int);
 int	__detect_path_locale(void);
 int	__wrap_setrunelocale(const char *);
 

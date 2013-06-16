@@ -2,6 +2,11 @@
  * Copyright 2011, Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 1994 Powerdog Industries.  All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -48,13 +53,14 @@
 #define	F_RECURSE	(1 << 2)
 
 static char *
-__strptime(const char *buf, const char *fmt, struct tm *tm, int *flagsp)
+__strptime(const char *buf, const char *fmt, struct tm *tm, int *flagsp,
+    int *GMTp, locale_t locale)
 {
 	char	c;
 	const char *ptr;
 	int	i, len, recurse = 0;
 	int Ealternative, Oalternative;
-	struct lc_time_T *tptr = __get_current_time_locale();
+	struct lc_time_T *tptr = __get_current_time_locale(locale);
 
 	if (*flagsp & F_RECURSE)
 		recurse = 1;
@@ -92,7 +98,8 @@ label:
 			break;
 
 		case '+':
-			buf = __strptime(buf, tptr->date_fmt, tm, flagsp);
+			buf = __strptime(buf, tptr->date_fmt, tm, flagsp,
+			    GMTp, locale);
 			if (buf == NULL)
 				return (NULL);
 			break;
@@ -115,13 +122,15 @@ label:
 			break;
 
 		case 'c':
-			buf = __strptime(buf, tptr->c_fmt, tm, flagsp);
+			buf = __strptime(buf, tptr->c_fmt, tm, flagsp,
+			    GMTp, locale);
 			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'D':
-			buf = __strptime(buf, "%m/%d/%y", tm, flagsp);
+			buf = __strptime(buf, "%m/%d/%y", tm, flagsp,
+			    GMTp, locale);
 			if (buf == NULL)
 				return (NULL);
 			break;
@@ -139,37 +148,43 @@ label:
 			goto label;
 
 		case 'F':
-			buf = __strptime(buf, "%Y-%m-%d", tm, flagsp);
+			buf = __strptime(buf, "%Y-%m-%d", tm, flagsp,
+			    GMTp, locale);
 			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'R':
-			buf = __strptime(buf, "%H:%M", tm, flagsp);
+			buf = __strptime(buf, "%H:%M", tm, flagsp,
+			    GMTp, locale);
 			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'r':
-			buf = __strptime(buf, tptr->ampm_fmt, tm, flagsp);
+			buf = __strptime(buf, tptr->ampm_fmt, tm, flagsp,
+			    GMTp, locale);
 			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'T':
-			buf = __strptime(buf, "%H:%M:%S", tm, flagsp);
+			buf = __strptime(buf, "%H:%M:%S", tm, flagsp,
+			    GMTp, locale);
 			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'X':
-			buf = __strptime(buf, tptr->X_fmt, tm, flagsp);
+			buf = __strptime(buf, tptr->X_fmt, tm, flagsp,
+			    GMTp, locale);
 			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'x':
-			buf = __strptime(buf, tptr->x_fmt, tm, flagsp);
+			buf = __strptime(buf, tptr->x_fmt, tm, flagsp,
+			    GMTp, locale);
 			if (buf == NULL)
 				return (NULL);
 			break;
@@ -535,11 +550,31 @@ label:
 }
 
 char *
+strptime_l(const char * __restrict buf, const char * __restrict fmt,
+    struct tm * __restrict tm, locale_t loc)
+{
+	char *ret;
+	int gmt;
+	int flags = F_ZERO;
+	FIX_LOCALE(loc);
+
+	gmt = 0;
+	ret = __strptime(buf, fmt, tm, &flags, &gmt, loc);
+	if (ret && gmt) {
+		time_t t = timegm(tm);
+		localtime_r(&t, tm);
+	}
+
+	return (ret);
+}
+
+char *
 strptime(const char *buf, const char *fmt, struct tm *tm)
 {
 	int	flags = F_ZERO;
 
-	return (__strptime(buf, fmt, tm, &flags));
+	return (strptime_l(buf, fmt, tm, __get_locale()));
+	// XXX return (__strptime(buf, fmt, tm, &flags));
 }
 
 /*
@@ -550,6 +585,8 @@ char *
 __strptime_dontzero(const char *buf, const char *fmt, struct tm *tm)
 {
 	int	flags = 0;
+	int	gmt = 0;
 
-	return (__strptime(buf, fmt, tm, &flags));
+	return (__strptime(buf, fmt, tm, &flags, &gmt, __get_locale()));
+	/* XXX */
 }

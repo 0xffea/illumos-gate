@@ -94,7 +94,6 @@ static char current_locale_string[NUM_CATS * (ENCODING_LEN + 1 + 1)];
 
 static char	*currentlocale(void);
 static char	*loadlocale(int);
-static const char *__get_locale_env(int);
 
 char *
 setlocale(int category, const char *locale)
@@ -305,7 +304,7 @@ loadlocale(int category)
 	return (NULL);
 }
 
-static const char *
+const char *
 __get_locale_env(int category)
 {
 	const char *env;
@@ -326,4 +325,15 @@ __get_locale_env(int category)
 		env = "C";
 
 	return (env);
+}
+
+/*
+ * Detect locale storage location and store its value to _PathLocale variable
+ */
+int
+__detect_path_locale(void)
+{
+	/* XXX */
+
+	return (0);
 }

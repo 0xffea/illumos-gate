@@ -3,6 +3,11 @@
  * Copyright (c) 2000, 2001 Alexey Zelkin <phantom@FreeBSD.org>
  * All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -29,10 +34,10 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdlib.h>
+
 #include "ldpart.h"
 #include "lmonetary.h"
 
-extern int __mlocale_changed;
 extern const char *__fix_locale_grouping_str(const char *);
 
 #define	LCMONETARY_SIZE_FULL (sizeof (struct lc_monetary_T) / sizeof (char *))
@@ -70,6 +75,8 @@ static struct lc_monetary_T _monetary_locale;
 static int	_monetary_using_locale;
 static char	*_monetary_locale_buf;
 
+struct xlocale_monetary __xlocale_global_monetary;
+
 static char
 cnv(const char *str)
 {
@@ -80,24 +87,37 @@ cnv(const char *str)
 	return ((char)i);
 }
 
-int
-__monetary_load_locale(const char *name)
+static void
+destruct_monetary(void *v)
+{
+	struct xlocale_monetary *l = v;
+
+	if (l->buffer != NULL)
+		free(l->buffer);
+
+	free(l);
+}
+
+static int
+monetary_load_locale_l(struct xlocale_monetary *loc, int *using_locale,
+    int *changed, const char *name)
 {
 	int ret;
+	struct lc_monetary_T *l = &loc->locale;
 
-	ret = __part_load_locale(name, &_monetary_using_locale,
-	    &_monetary_locale_buf, "LC_MONETARY",
+	ret = __part_load_locale(name, using_locale,
+	    &loc->buffer, "LC_MONETARY",
 	    LCMONETARY_SIZE_FULL, LCMONETARY_SIZE_MIN,
-	    (const char **)&_monetary_locale);
+	    (const char **)l);
 	if (ret != _LDP_ERROR)
-		__mlocale_changed = 1;
+		*changed = 1;
 	if (ret == _LDP_LOADED) {
-		_monetary_locale.mon_grouping =
-		    __fix_locale_grouping_str(_monetary_locale.mon_grouping);
+		l->mon_grouping =
+		    __fix_locale_grouping_str(l->mon_grouping);
 
 #define	M_ASSIGN_CHAR(NAME) \
-		(((char *)_monetary_locale.NAME)[0] = \
-			cnv(_monetary_locale.NAME))
+		(((char *)l->NAME)[0] = \
+			cnv(l->NAME))
 
 		M_ASSIGN_CHAR(int_frac_digits);
 		M_ASSIGN_CHAR(frac_digits);
@@ -114,11 +134,13 @@ __monetary_load_locale(const char *name)
 		 * reading FreeBSD LC_MONETARY data files.
 		 */
 #define	M_ASSIGN_ICHAR(NAME)					\
-		if (_monetary_locale.int_##NAME == NULL)	\
-			_monetary_locale.int_##NAME =		\
-			    _monetary_locale.NAME;		\
-		else						\
-			M_ASSIGN_CHAR(int_##NAME);
+		do {						\
+			if (l->int_##NAME == NULL)		\
+				l->int_##NAME =			\
+				    l->NAME;			\
+			else					\
+				M_ASSIGN_CHAR(int_##NAME);	\
+		} while (0)
 
 		M_ASSIGN_ICHAR(p_cs_precedes);
 		M_ASSIGN_ICHAR(n_cs_precedes);
@@ -130,9 +152,37 @@ __monetary_load_locale(const char *name)
 	return (ret);
 }
 
-struct lc_monetary_T *
-__get_current_monetary_locale(void)
+int
+__monetary_load_locale(const char *name)
 {
-	return (_monetary_using_locale ? &_monetary_locale :
-	    (struct lc_monetary_T *)&_C_monetary_locale);
+	return (monetary_load_locale_l(&__xlocale_global_monetary,
+	    &__xlocale_global_locale.using_monetary_locale,
+	    &__xlocale_global_locale.monetary_locale_changed, name));
+}
+
+void *
+__monetary_load(const char *name, locale_t loc)
+{
+	struct xlocale_monetary *new;
+
+	new = calloc(sizeof(struct xlocale_monetary), 1);
+	if (new == NULL)
+		return (NULL);
+
+	new->header.header.destructor = destruct_monetary;
+	if (monetary_load_locale_l(new, &loc->using_monetary_locale,
+	    &loc->monetary_locale_changed, name) == _LDP_ERROR) {
+		xlocale_release(new);
+		return (NULL);
+	}
+
+	return (NULL);
+}
+
+struct lc_monetary_T *
+__get_current_monetary_locale(locale_t loc)
+{
+	return (loc->using_monetary_locale
+	    ? &((struct xlocale_monetary*)loc->components[XLC_MONETARY])->locale
+	    : (struct lc_monetary_T *)&_C_monetary_locale);
 }
