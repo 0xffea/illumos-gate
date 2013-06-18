@@ -27,10 +27,14 @@
 #
 
 PROG=		intrd
+OBJS=		intrd.o
+SRCS=		$(OBJS:%.o=%.c)
 MANIFEST=	intrd.xml
 SVCMETHOD=	svc-intrd
 
-include ../Makefile.cmd
+include $(SRC)/cmd/Makefile.cmd
+
+LDLIBS +=	-lcmdutils -lkstat
 
 TARGET=	all
 
@@ -45,15 +49,19 @@ $(ROOTPROG)	:= FILEMODE= 555
 
 all: $(PROG)
 
+$(PROG): $(OBJS)
+	$(LINK.c) $(OBJS) -o $@ $(LDLIBS)
+
 install: all .WAIT $(ROOTPROG) $(ROOTMANIFEST) $(ROOTSVCMETHOD)
 
 clean:
+	$(RM) $(OBJS)
 
 check:	$(CHKMANIFEST)
 
 ${ROOTLIB}/%: %
 	${INS.file}
 
-lint:
+lint:	lint_SRCS
 
-include ../Makefile.targ
+include $(SRC)/cmd/Makefile.targ
